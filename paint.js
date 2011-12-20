@@ -1,11 +1,23 @@
-	
-		var PAINT = function (containerElement){ 
+		var PAINT = function (options){ 
+			//if no options, great we'll do it all by our self.
+			var options = options || {};
 			
-			var width = 1024;
-			var height = 748;
+			//orietation is for tablet devices.
+			var orientation = options.orientation || 'landscape';
 			
+			//default width & height, get monkeyed with when orientation changes.
+			var width = options.width || 1024;
+			var height = options.height || 748;
+						
+			var containerElement = options.container || function(){
+				var c = document.createElement('div');
+				c.setAttribute('id', 'paintContainer');
+				document.body.appendChild(c);
+				return c;
+			}();
+					
 			// paint canvas element stuff.
-			var paintCanvas = function(){
+			var paintCanvas = options.paintCanvas || function(){
 				var c = document.createElement('canvas');
 				c.setAttribute('id', 'paintCanvas');
 				c.setAttribute('class', 'paintCan');
@@ -19,7 +31,7 @@
 			var paintContext = paintCanvas.getContext('2d');
 			
 			//the palettes will live on control canvas.
-			var controlCanvas = function(){
+			var controlCanvas = options.controlCanvas || function(){
 				var c = document.createElement('canvas');
 				c.setAttribute('id', 'controlCanvas');
 				c.setAttribute('height', height);
@@ -38,9 +50,11 @@
 				activeTool = tool;
 			}
 			
-			//lets add some shapes to draw.
+			//lets add some default shapes to draw.
 			// each shape is an array of points on a 100x100 grid, will 
 			// be scaled. 50,50 is assumed to be the center.
+			// if options object contains more shapes, then add them to this 
+			// object (or replace these)
 			
 			var shapes = {
 				crayon: [[30,10],[45,20],[50,18],[90,60],[70,80],[30,40],[33,33],[22,18]],
@@ -50,6 +64,7 @@
 				square: [[0,0],[100,0],[100,100],[0,100]],
 				eraser: [[10,30],[100,30],[90,70],[0,70]],
 			}
+			
 
 			//are we dragging or clicking?
 			var clicking = false;
@@ -113,20 +128,28 @@
 			};
 			
 			var drawToolbars = function(context){
-				var swatchHeight = height / colors.length;
+				//we'll make all the icons the same size (the size of the smallest)
+				var iconHeight = (colors.length < tools.length)? height / tools.length : height / colors.length ;
+				//if we're portrati, make it a little smaller
 				
-				//we're going to draw a new canvas for the toolbars
+				// clear of the current toolbars, in case we need to change hilighting.
+				context.canvas.width = context.canvas.width;
+				
+				//a simple background for the buttons
+				context.fillStyle = "rgba(100,100,100,.5)";
+				context.fillRect(width - iconHeight, 0, iconHeight, height);
+				context.fillRect(0, 0, iconHeight, height);
 								
 				for (var i = 0; i <= colors.length - 1; i++){
 				  var color = (typeof colors[i] == 'function')? colors[i]() : colors[i];
-				  drawShape(context, swatchHeight / 2, swatchHeight / 2 + i * swatchHeight, shapes.square ,color, swatchHeight* .8, "black", 2);
+				  drawShape(context, iconHeight / 2, iconHeight / 2 + i * iconHeight, shapes.square ,color, iconHeight * .7, "black", 2);
 				};
 
+
 				//put the tools evenly spaced on the right side.
-				var toolHeight = (height / tools.length) * .5 ; 
+				
 				for (var i = 0; i <= tools.length - 1; i++){
-				  var stroke =  "black" ;
-				  tools[i].icon(context, width -  toolHeight,toolHeight + i * toolSpacing);
+				  tools[i].icon(context, width - .5 * iconHeight,iconHeight * .5 + i * toolSpacing);
 				};
 			};
 			
@@ -146,6 +169,7 @@
 					context.closePath();
 				}
 			};
+			
 		
 			var saveImage = function(){
 				document.location.href = paintCanvas.toDataURL();
@@ -159,8 +183,7 @@
 			var colors = ["red", "orange", "yellow", "#00ff00", "rgba(0,0,255,255)", "indigo", "violet", ];
 			
 			//tool settings/defaults.
-			
-			var tools = [
+			var tools = options.tools || [
 						  {
 						  icon: function(context, x,y){
 						    	drawShape(context, x,y,shapes.crayon, toolColor, 90, "black", 2);
@@ -215,27 +238,26 @@
 						   },
 						];
 			
-			var toolColor = colors[Math.floor(Math.random()*colors.length)];
+			var toolColor = options.startColor || colors[Math.floor(Math.random()*colors.length)];
 
-			var activeTool = tools[0].tool;
+			var activeTool = options.startTool || tools[0].tool;
 			var toolSpacing = height / tools.length;
 			
-			var init = function(){
-					//draw the toolbars
-					drawToolbars(controlContext);
-					if("createTouch" in document){
-						//register events for ipad interaction
-						controlCanvas.addEventListener('touchstart', canvasClick,false);
-						controlCanvas.addEventListener('touchend', mouseUp,false);
-						controlCanvas.addEventListener('touchend', mouseUp,false);
-						controlCanvas.addEventListener('touchmove', mouseMove,false);
-					} else {
-						//register our events for mouse interaction.
-						controlCanvas.addEventListener('mousedown', canvasClick,false);
-						controlCanvas.addEventListener('mouseout', mouseUp,false);
-						controlCanvas.addEventListener('mouseup', mouseUp,false);
-						controlCanvas.addEventListener('mousemove', mouseMove,false);
-					}
+			
+			
+			//events go below.
+			
+			//
+			function orientationChange() {
+				var tempHeight = height;
+				height = width - 20;
+				width = tempHeight + 20;
+				controlCanvas.width = width;
+				controlCanvas.height = height;
+				paintCanvas.height = height;
+				paintCanvas.width = width;
+				drawToolbars(controlContext);
+				orientation = (orientation == 'landscape')? 'landscape' : 'portrait';
 
 			};
 			
@@ -264,12 +286,9 @@
 						//redraw toolbar with selected color.
 						drawToolbars(controlContext);
 					}
-					else if (x > width - (1.5 * toolSpacing)){ 
+					else if (x > width - (.5 * toolSpacing)){ 
 						var selectedTool = Math.floor(y/toolSpacing);
 						setTool(tools[selectedTool].tool);
-
-						//redraw the toolbar when we select a tool.
-						//drawToolbars(controlContext);
 					}
 					else {
 						activeTool(paintContext, x,y,toolColor, 50);
@@ -292,15 +311,33 @@
 				dragging = false; 
 			};
 			
+			//last but not least, our initializer:
+			var init = function(){
+					//draw the toolbars
+					drawToolbars(controlContext);
+					
+					if("createTouch" in document){
+						//register events for ipad interaction
+						controlCanvas.addEventListener('touchstart', canvasClick,false);
+						controlCanvas.addEventListener('touchend', mouseUp,false);
+						controlCanvas.addEventListener('touchend', mouseUp,false);
+						controlCanvas.addEventListener('touchmove', mouseMove,false);
+						document.body.addEventListener('onorientationchange', orientationChange, false)
+					} else {
+						//register our events for mouse interaction.
+						controlCanvas.addEventListener('mousedown', canvasClick,false);
+						controlCanvas.addEventListener('mouseout', mouseUp,false);
+						controlCanvas.addEventListener('mouseup', mouseUp,false);
+						controlCanvas.addEventListener('mousemove', mouseMove,false);
+					}
+
+			};
+			
 			return {
 				
-				canvasClick: canvasClick,
-				eraseAll: eraseAll,
 				init: init,
-				drawCircle: drawCircle,
 				setColor: setColor,
 				setTool: setTool,
-				mouseUp: mouseUp,
-				mouseMove: mouseMove,
+				
 			}
 		};
