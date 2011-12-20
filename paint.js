@@ -3,7 +3,7 @@
 			var options = options || {};
 			
 			//orietation is for tablet devices.
-			var orientation = options.orientation || 'landscape';
+			var orientation = options.orientation || 90;
 			
 			//default width & height, get monkeyed with when orientation changes.
 			var width = options.width || 1024;
@@ -139,18 +139,19 @@
 				context.fillStyle = "rgba(100,100,100,.5)";
 				context.fillRect(width - iconHeight, 0, iconHeight, height);
 				context.fillRect(0, 0, iconHeight, height);
-								
+				
+				
+							
 				for (var i = 0; i <= colors.length - 1; i++){
 				  var color = (typeof colors[i] == 'function')? colors[i]() : colors[i];
 				  drawShape(context, iconHeight / 2, iconHeight / 2 + i * iconHeight, shapes.square ,color, iconHeight * .7, "black", 2);
 				};
-
-
 				//put the tools evenly spaced on the right side.
-				
 				for (var i = 0; i <= tools.length - 1; i++){
 				  tools[i].icon(context, width - .5 * iconHeight,iconHeight * .5 + i * toolSpacing);
 				};
+
+
 			};
 			
 			var paint = function(context, x,y, hexColor, size){
@@ -170,6 +171,25 @@
 				}
 			};
 			
+			var eraser = function(context, x,y){
+				if(clicking && dragging){
+					context.globalCompositeOperation = 'destination-out';
+					context.strokeStyle = 'red';
+					context.lineWidth = 85;
+					context.lineJoin = 'round';
+					context.lineTo(x,y);
+					context.stroke();
+					context.globalCompositeOperation = 'source-over';
+				}
+				else if(clicking){
+					context.beginPath();
+					context.moveTo(x,y);
+				}
+				else{
+					context.closePath();
+				}
+			};
+			
 		
 			var saveImage = function(){
 				document.location.href = paintCanvas.toDataURL();
@@ -179,8 +199,35 @@
 				paintCanvas.width = paintCanvas.width;
 			};
 			
+			var colorCycle = function(){
+				//make the arguments object into an array so we can access the array proto funcs.
+				var myColors = (arguments[0])? Array.prototype.slice.call(arguments) : ["red","green", "blue"];
+				
+				//if the current tool colors is one we are cycling, return its position
+				var currentKey = myColors.indexOf(toolColor);
+	
+				//if we can go to the next color, do so, otherwise, go to the first in the array.
+				return (myColors[currentKey + 1])? myColors[currentKey + 1]: myColors[0];
+			};
+			
 			//the colors to use in the palette, css valid, otherwise a function.
-			var colors = ["red", "orange", "yellow", "#00ff00", "rgba(0,0,255,255)", "indigo", "violet", ];
+			var colors = [function(){
+						  	return colorCycle("#f00","#c00","#900","#600","#300");
+						  },
+						  function(){
+						  	return colorCycle("#f30","#c30","#930","#630","#330");
+						  },
+						  function(){
+						  	return colorCycle("#fc0","#cc0","#9c0","#6c0","#3c0");
+						  },
+						  "#00ff00",
+						  "rgba(0,0,255,255)",
+						  "indigo",
+						  "purple",
+						  function(){
+						  	return colorCycle("black","white","brown");
+						  },
+						  	];
 			
 			//tool settings/defaults.
 			var tools = options.tools || [
@@ -234,7 +281,9 @@
 						   icon: function(context,x,y){
 						    	drawShape(context,x,y,shapes.eraser, "pink", 63, "black", 2);
 						    	}, 
-							  tool: eraseAll,
+							  tool: function(context, x,y){
+							  	eraser(context, x,y);
+							  	},
 						   },
 						];
 			
@@ -257,8 +306,7 @@
 				paintCanvas.height = height;
 				paintCanvas.width = width;
 				drawToolbars(controlContext);
-				orientation = (orientation == 'landscape')? 'landscape' : 'portrait';
-
+				orientation = (orientation == 90)? 90 : 0;
 			};
 			
 			var canvasClick = function(e) {
@@ -293,6 +341,7 @@
 					else {
 						activeTool(paintContext, x,y,toolColor, 50);
 					}
+					
 			};
 			
 			var mouseMove = function(e){ 
@@ -317,12 +366,16 @@
 					drawToolbars(controlContext);
 					
 					if("createTouch" in document){
+						//we must be on a device that supports touch, so it probably also supports rotation
+						// its hacky, but hey...
+						orientation = Math.abs(window.orientation);
+						
 						//register events for ipad interaction
 						controlCanvas.addEventListener('touchstart', canvasClick,false);
 						controlCanvas.addEventListener('touchend', mouseUp,false);
 						controlCanvas.addEventListener('touchend', mouseUp,false);
 						controlCanvas.addEventListener('touchmove', mouseMove,false);
-						document.body.addEventListener('onorientationchange', orientationChange, false)
+						window.addEventListener('orientationchange', orientationChange, false)
 					} else {
 						//register our events for mouse interaction.
 						controlCanvas.addEventListener('mousedown', canvasClick,false);
