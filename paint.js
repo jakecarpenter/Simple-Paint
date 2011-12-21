@@ -70,51 +70,143 @@
 			var clicking = false;
 			var dragging = false;
 			
-			var drawCircle = function (context, posX, posY, hexColor, diameter, strokeColor, lineWidth){
-					context.fillStyle = hexColor;
-					context.beginPath();
-					context.arc(posX, posY,diameter / 2, 0, Math.PI * 2);
-					context.fill();
-					if(strokeColor){
-						if(lineWidth){
-							context.lineWidth = lineWidth;
-						}
-						context.strokeStyle = strokeColor;
-						context.stroke();
+			var drawCircle = function (properties){
+					// function(context, posX, posY, shape, hexColor, scale, strokeColor, lineWidth){
+				var properties = properties || {};
+
+				//scaling factor. 1 = 100%, .5 = 50%
+				var diameter = properties.scale  || 100;
+						
+				//which context do we use? if none supplied, assume first canvas
+				var context = properties.context || document.getElementsByTagName('canvas')[0].getContext('2d');
+				
+				//where do we draw it?
+				var x = properties.x || 0;
+				var y = properties.y || 0;
+				
+				//object properites
+				var fillStyle = properties.fillStyle || "";
+				var strokeColor = properties.strokeStyle || "";
+				var lineStyle = properties.lineStyle || "";
+				var lineWidth = properties.lineWidth || "";
+				var lineJoin = properties.lineJoin || "round";
+
+				//shadow properties if any shadow object is passed, draw a shadow.
+				if(properties.shadow){
+					var shadow = true;
+					var shadowOffsetX = properties.shadow.offsetX || 0;
+					var shadowOffsetY = properties.shadow.offsetY || 0;
+					var shadowBlur = properties.shadow.blur || 5;
+					var shadowColor = properties.shadow.color || "white";
+				}
+				
+				context.beginPath();
+				context.arc(x, y,diameter / 2, 0, Math.PI * 2);
+				
+				if(strokeColor){
+					if(lineWidth){
+						context.lineWidth = lineWidth;
 					}
-					context.closePath();
+					context.strokeStyle = strokeColor;
+					context.stroke();
+				}
+				
+				if(shadow){
+					context.shadowOffsetX = shadowOffsetX;
+					context.shadowOffsetY = shadowOffsetY;
+					context.shadowBlur    = shadowBlur;
+					context.shadowColor   = shadowColor;
+				}
+				
+				
+				//fill the obkect
+				context.fillStyle = fillStyle;
+				context.fill();
+				
+				//stop drawing the shadow, if we did
+				if(shadow){
+					context.shadowOffsetX = 0;
+					context.shadowOffsetY = 0;
+					context.shadowBlur    = 0;
+					context.shadowColor   = 0;
+				}
+				
+				context.closePath();
 			};
 						
-			var drawShape = function(context, posX, posY, shape, hexColor, scale, strokeColor, lineWidth){
-				//scaling factor. 100 = 100%
-				scale = scale/100;
+			var drawShape = function(properties){
+				// function(context, posX, posY, shape, hexColor, scale, strokeColor, lineWidth){
+				var properties = properties || {};
+
+				//scaling factor. 1 = 100%, .5 = 50%
+				var scale = properties.scale / 100  || 1;
 				
-				//posX and posY need to represent the center of the object.
-				// so lets estimate the center
-				var cenX =0;
-				var cenY =0;
-				for (var i=0; i < shape.length; i++) {
-				  cenX += shape[i][0];
-				  cenY += shape[i][1];
-				};
-				cenX = cenX / shape.length;
-				cenY = cenY / shape.length;
+				//what shape do we draw? if nothing, nothing.
+				var shape = properties.shape || [];
 				
-				posX -= cenX*scale;
-				posY -= cenY*scale; 
+				//which context do we use? if none supplied, dont do anything.
+				var context = properties.context || document.getElementsByTagName('canvas')[0].getContext('2d');
 				
-				context.fillStyle = hexColor;
+				//where do we draw it?
+				var x = properties.x || 0;
+				var y = properties.y || 0;
+				
+				//object properites
+				var fillStyle = properties.fillStyle || "";
+				var strokeColor = properties.strokeStyle || "";
+				var lineStyle = properties.lineStyle || "";
+				var lineWidth = properties.lineWidth || "";
+				var lineJoin = properties.lineJoin || "round";
+				
+				//shadow properties if any shadow object is passed, draw a shadow.
+				if(typeof properties.shadow === 'object'){
+					var shadow = true;
+					var shadowOffsetX = properties.shadow.offsetX || 0;
+					var shadowOffsetY = properties.shadow.offsetY || 0;
+					var shadowBlur = properties.shadow.blur || 0;
+					var shadowColor = properties.shadow.color || "";
+				}
+
+				
+				//x and y will need to be offset to the center of the object.
+				// so lets estimate the center unless noCenter is set to true.
+				if(!properties.noCenter){
+					
+					x = properties.centerX || function(){
+						var centerX = 0;
+						//find the average X of all the shape's points.
+						for (var i=0; i < shape.length; i++) {
+					  		centerX += shape[i][0];
+					  		//console.log(shape[i][0])
+					  	};
+					  	centerX = centerX / shape.length;
+					  	return x -= centerX*scale;
+					}();
+					
+					y = properties.centerY || function(){
+						var centerY = 0;
+						//find the average Y of all the shape's points.
+						for (var i=0; i < shape.length; i++) {
+					  		centerY += shape[i][1];
+						};
+						centerY = centerY / shape.length;
+						return y -= centerY*scale;
+					}();
+				}
+
+				//lets start drawing.
 				context.beginPath();
+				
 				//move to the first point before we draw.
-				context.moveTo(posX + scale * shape[1][0], posY + scale * shape[1][1]);
+				context.moveTo(x + scale * shape[1][0], y + scale * shape[1][1]);
 				for (var i=0; i < shape.length; i++) {
 				  //draw each point in the array.
-				  context.lineTo(posX + scale * shape[i][0], posY + scale * shape[i][1]);
+				  context.lineTo(x + scale * shape[i][0], y + scale * shape[i][1]);
 				};
 				//draw the first point again
-				context.lineTo(posX + scale * shape[0][0], posY +  scale * shape[0][1]);
+				context.lineTo(x + scale * shape[0][0], y +  scale * shape[0][1]);
 				
-				context.fill();
+				//if there is a stroke color, assume we're stroking.
 				if(strokeColor){
 					if(lineWidth){
 						context.lineJoin = 'round';
@@ -123,8 +215,31 @@
 					context.strokeStyle = strokeColor;
 					context.stroke();
 				}
-				context.closePath();
 				
+				//if there is shadow sub property, draw shadow.
+				if(shadow){
+					context.shadowOffsetX = shadowOffsetX;
+					context.shadowOffsetY = shadowOffsetY;
+					context.shadowBlur    = shadowBlur;
+					context.shadowColor   = shadowColor;
+				}
+				
+				
+				//fill the obkect
+				context.fillStyle = fillStyle;
+				context.fill();
+				
+				//stop drawing the shadow, if we did
+				if(shadow){
+					context.shadowOffsetX = 0;
+					context.shadowOffsetY = 0;
+					context.shadowBlur    = 0;
+					context.shadowColor   = 0;
+				}
+				
+				//stop drawing.
+				context.closePath();
+			
 			};
 			
 			var drawToolbars = function(context){
@@ -139,26 +254,79 @@
 				context.fillStyle = "rgba(100,100,100,.5)";
 				context.fillRect(width - iconHeight, 0, iconHeight, height);
 				context.fillRect(0, 0, iconHeight, height);
-				
-				
 							
 				for (var i = 0; i <= colors.length - 1; i++){
+					
 				  var color = (typeof colors[i] == 'function')? colors[i]() : colors[i];
-				  drawShape(context, iconHeight / 2, iconHeight / 2 + i * iconHeight, shapes.square ,color, iconHeight * .7, "black", 2);
+				  var settings = {
+				  	context: controlContext,
+				  	x: iconHeight / 2,
+				  	y:  iconHeight / 2 + i * iconHeight,
+				  	shape: shapes.square,
+				  	fillStyle: color,
+				  	scale: iconHeight * .7,
+				  	strokeStyle: "black",
+				  	lineWidth: 2,
+				  };
+				  drawShape(settings);
 				};
+				
 				//put the tools evenly spaced on the right side.
 				for (var i = 0; i <= tools.length - 1; i++){
-				  tools[i].icon(context, width - .5 * iconHeight,iconHeight * .5 + i * toolSpacing);
-				};
-
-
+				  
+				 var toolSettings = {
+				  	context: controlContext,
+				  	x: width - .5 * iconHeight,
+				  	y:  iconHeight * .5 + i * toolSpacing,
+				  	fillStyle: color,
+				  	scale: iconHeight * .7,
+				  	strokeStyle: "black",
+				  	lineWidth: 2,
+				  }
+				  //lets adda glow to the active tool.
+				  if(tools[i].tool === activeTool){
+				  	toolSettings.shadow = {
+				  		offsetX: 4,
+				  		offsetY: 4,
+				  		blur: 10,
+				  		color: "rgba(0,0,0,.8)"
+				  	}
+				  }
+				  tools[i].icon(toolSettings);
+				};			
 			};
 			
-			var paint = function(context, x,y, hexColor, size){
+			var paint = function(properties){
+				
+				var properties = properties || {};
+				
+				//which context do we use? if none supplied, dont do anything.
+				var context = properties.context || document.getElementsByTagName('canvas')[0].getContext('2d');
+				
+				//where do we draw it?
+				var x = properties.x || 0;
+				var y = properties.y || 0;
+				
+				//object properites
+				var fillStyle = properties.fillStyle || "";
+				var strokeColor = properties.strokeStyle || "";
+				var lineStyle = properties.lineStyle || "";
+				var lineWidth = properties.lineWidth || "";
+				var lineJoin = properties.lineJoin || "round";
+				
+				//shadow properties if any shadow object is passed, draw a shadow.
+				if(properties.shadow){
+					var shadow = true;
+					var shadowOffsetX = properties.shadow.offsetX || 0;
+					var shadowOffsetY = properties.shadow.offsetY || 0;
+					var shadowBlur = properties.shadow.blur || 5;
+					var shadowColor = properties.shadow.color || "white";
+				}
+				//now we get around to drawing our line.
 				if(clicking && dragging){
-					context.strokeStyle = hexColor;
-					context.lineWidth = size;
-					context.lineJoin = 'round';
+					context.strokeStyle = fillStyle;
+					context.lineWidth = lineWidth;
+					context.lineJoin = lineJoin;
 					context.lineTo(x,y);
 					context.stroke();
 				}
@@ -171,12 +339,26 @@
 				}
 			};
 			
-			var eraser = function(context, x,y){
+			var eraser = function(properties){
+							
+				var properties = properties || {};
+				
+				//which context do we use? if none supplied, dont do anything.
+				var context = properties.context || document.getElementsByTagName('canvas')[0].getContext('2d');
+				
+				//where do we draw it?
+				var x = properties.x || 0;
+				var y = properties.y || 0;
+				
+				//line properties
+				var lineWidth = properties.lineWidth || "";
+				var lineJoin = properties.lineJoin || "round";
+				
 				if(clicking && dragging){
 					context.globalCompositeOperation = 'destination-out';
 					context.strokeStyle = 'red';
-					context.lineWidth = 85;
-					context.lineJoin = 'round';
+					context.lineWidth = lineWidth;
+					context.lineJoin = lineJoin;
 					context.lineTo(x,y);
 					context.stroke();
 					context.globalCompositeOperation = 'source-over';
@@ -200,30 +382,41 @@
 			};
 			
 			var colorCycle = function(){
+				
 				//make the arguments object into an array so we can access the array proto funcs.
 				var myColors = (arguments[0])? Array.prototype.slice.call(arguments) : ["red","green", "blue"];
 				
 				//if the current tool colors is one we are cycling, return its position
 				var currentKey = myColors.indexOf(toolColor);
-	
+				
 				//if we can go to the next color, do so, otherwise, go to the first in the array.
 				return (myColors[currentKey + 1])? myColors[currentKey + 1]: myColors[0];
 			};
 			
 			//the colors to use in the palette, css valid, otherwise a function.
 			var colors = [function(){
-						  	return colorCycle("#f00","#c00","#900","#600","#300");
+							//reds
+						  	return colorCycle("#f00","#c00","#900");
 						  },
 						  function(){
-						  	return colorCycle("#f30","#c30","#930","#630","#330");
+						  	//oranges
+						  	return colorCycle("#f30","#c30","#f60","#f90");
 						  },
 						  function(){
-						  	return colorCycle("#fc0","#cc0","#9c0","#6c0","#3c0");
+						  	return colorCycle("#ff0","#ff3","#ff6","#ff9");
 						  },
-						  "#00ff00",
-						  "rgba(0,0,255,255)",
-						  "indigo",
-						  "purple",
+						  function(){
+						  	//greens
+						  	return colorCycle("#0F0","#3c0","#090","#060");
+						  },
+						  function(){
+						  	//blues
+						  	return colorCycle("#00F","#03f","#06f","#09f");
+						  },
+						  function(){
+						  	//indigo
+						  	return colorCycle("#90f","#60f","#93f","#99f");
+						  },
 						  function(){
 						  	return colorCycle("black","white","brown");
 						  },
@@ -232,43 +425,75 @@
 			//tool settings/defaults.
 			var tools = options.tools || [
 						  {
-						  icon: function(context, x,y){
-						    	drawShape(context, x,y,shapes.crayon, toolColor, 90, "black", 2);
+						  icon: function(properties){
+						  			properties.shape = shapes.crayon;
+						  			properties.fillStyle = toolColor;
+						  			properties.strokeStyle = "black";
+						  			properties.lineWidth = 2;
+						    		drawShape(properties);
 						    	}, 
-							  tool: function(context, x,y){
-							  	paint(context, x,y,toolColor, 20);
+							  tool: function(properties){
+							  	properties.lineWidth = 20;
+							  	paint(properties);
 							  	}
 						   },
 						  {
-						  icon: function(context,x,y){
-						    	drawShape(context,x,y,shapes.square, toolColor, 70, "black", 2);
-						    	}, 
-							  tool: function(context,x,y){
-							  	drawShape(context, x,y,shapes.square, toolColor, 55);
+						  icon: function(properties){
+						  			properties.shape = shapes.square;
+						  			properties.fillStyle = toolColor;
+						  			properties.strokeStyle = "black";
+						  			properties.lineWidth = 2;
+						    		drawShape(properties);
+						    	},  
+							  tool: function(properties){
+							  	properties.shape = shapes.square;
+					  			properties.fillStyle = toolColor;
+					  			properties.scale = 55;
+					    		drawShape(properties);
 							  	}
 						  },
 						  {
-						  icon: function(context,x,y){
-							  drawCircle(context,x,y,toolColor, 75, "black", 2);
+						  icon: function(properties){
+								properties.shape = shapes.square;
+								properties.fillStyle = toolColor;
+								properties.strokeStyle = "black";
+								properties.lineWidth = 2;
+							    drawCircle(properties);
 							}, 
-							  tool: function(context,x,y){
-							  drawCircle(context, x,y,toolColor, 50);
+							  tool: function(properties){
+							  	properties.size = 50;
+							  	properties.fillStyle = toolColor;
+							  drawCircle(properties);
 							}
 						  },
 						  {
-						  icon: function(context,x,y){
-						    	drawShape(context,x,y,shapes.triangle, toolColor, 70, "black", 2);
+						  icon: function(properties){
+						  			properties.shape = shapes.triangle;
+						  			properties.fillStyle = toolColor;
+						  			properties.strokeStyle = "black";
+						  			properties.lineWidth = 2;
+						    		drawShape(properties);
 						    	}, 
-							  tool: function(context,x,y){
-							  	drawShape(context, x,y,shapes.triangle, toolColor, 55);
+							  tool: function(properties){
+							  	properties.shape = shapes.triangle;
+					  			properties.fillStyle = toolColor;
+					  			properties.scale = 55;
+					    		drawShape(properties);
 							  	}
 						  },
 						  {
-						  icon: function(context,x,y){
-						    	drawShape(context,x,y,shapes.star, toolColor, 80, "black", 2);
-						    	}, 
-							  tool: function(context,x,y){
-							  	drawShape(context, x,y,shapes.star, toolColor, 50);
+						  icon: function(properties){
+						  			properties.shape = shapes.star;
+						  			properties.fillStyle = toolColor;
+						  			properties.strokeStyle = "black";
+						  			properties.lineWidth = 2;
+						    		drawShape(properties);
+						    	},  
+							  tool: function(properties){
+							  	properties.shape = shapes.star;
+					  			properties.fillStyle = toolColor;
+					  			properties.scale = 50;
+					    		drawShape(properties);
 							  	}
 						  },/* dont need save right now
 						  {
@@ -278,11 +503,16 @@
 							  tool: saveImage,
 						   },*/
 						   {
-						   icon: function(context,x,y){
-						    	drawShape(context,x,y,shapes.eraser, "pink", 63, "black", 2);
-						    	}, 
-							  tool: function(context, x,y){
-							  	eraser(context, x,y);
+						   icon: function(properties){
+						  			properties.shape = shapes.eraser;
+						  			properties.fillStyle = "pink";
+						  			properties.strokeStyle = "black";
+						  			properties.lineWidth = 2;
+						    		drawShape(properties);
+						    	},  
+							  tool: function(properties){
+							  	properties.lineWidth = 80;
+							  	eraser(properties);
 							  	},
 						   },
 						];
@@ -310,7 +540,9 @@
 			};
 			
 			var canvasClick = function(e) {
+				
 					clicking = true;
+					
 					//first we need to know where on the canvas was clicked.
 					if (e.pageX || e.pageY) { 
 					  x = e.pageX - controlCanvas.offsetLeft;
@@ -324,6 +556,11 @@
 					// we were dragging when we showed up. 
 					var swatchHeight = height / colors.length;
 					if(x < (swatchHeight)){
+						//if this is called while dragging, do nothing.
+						if(dragging){
+							return;
+						}
+											
 						var selectedRegion = Math.floor(y/swatchHeight);
 						if(typeof colors[selectedRegion] == 'function'){
 							setColor(colors[selectedRegion]());
@@ -333,13 +570,32 @@
 						}
 						//redraw toolbar with selected color.
 						drawToolbars(controlContext);
+						//we don't we don't want to drag off of the toolbar, so turn off clicking
+						clicking = false;
 					}
-					else if (x > width - (.5 * toolSpacing)){ 
+					else if (x > width - (.5 * toolSpacing)){
+						//if this is called while dragging, do nothing.
+						if(dragging){
+							return;
+						}
+					
 						var selectedTool = Math.floor(y/toolSpacing);
 						setTool(tools[selectedTool].tool);
+						//redraw toolbar with selected color.
+						drawToolbars(controlContext);
+						
+						//we don't we don't want to drag off of the toolbar, so turn off clicking
+						clicking = false;
 					}
 					else {
-						activeTool(paintContext, x,y,toolColor, 50);
+						var toolSettings = {
+							context: paintContext,
+							x: x,
+							y: y, 
+							fillStyle:toolColor,
+							scale: 50,
+						};
+						activeTool(toolSettings);
 					}
 					
 			};
@@ -357,11 +613,14 @@
 					
 			var mouseUp = function(){
 				clicking = false;
-				dragging = false; 
+				dragging = false;
 			};
 			
 			//last but not least, our initializer:
 			var init = function(){
+					
+					toolColor = (typeof toolColor != 'function')? toolColor : toolColor();
+								
 					//draw the toolbars
 					drawToolbars(controlContext);
 					
@@ -388,9 +647,6 @@
 			
 			return {
 				
-				init: init,
-				setColor: setColor,
-				setTool: setTool,
-				
+				init: init
 			}
 		};
