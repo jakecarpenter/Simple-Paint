@@ -529,13 +529,17 @@
 			//
 			function orientationChange() {
 				var tempHeight = height;
-				height = width - 20;
-				width = tempHeight + 20;
-				controlCanvas.width = width;
+				
+				/*controlCanvas.width = width;
 				controlCanvas.height = height;
 				paintCanvas.height = height;
-				paintCanvas.width = width;
-				drawToolbars(controlContext);
+				paintCanvas.width = width; 
+				drawToolbars(controlContext); */
+				//paintContext.rotate(90 * Math.PI / 180);
+				//controlContext.rotate(90 * Math.PI / 180);
+
+				
+				//not used, but meh.
 				orientation = (orientation == 90)? 90 : 0;
 			};
 			
@@ -573,7 +577,7 @@
 						//we don't we don't want to drag off of the toolbar, so turn off clicking
 						clicking = false;
 					}
-					else if (x > width - (.5 * toolSpacing)){
+					else if (x > width - (.95* toolSpacing)){
 						//if this is called while dragging, do nothing.
 						if(dragging){
 							return;
