@@ -393,6 +393,22 @@
 				return (myColors[currentKey + 1])? myColors[currentKey + 1]: myColors[0];
 			};
 			
+			//set up some gradients to use in lieu of colors.
+			var gradients = {};
+			gradients.rainbow = paintContext.createLinearGradient(0,0,width,0);
+			gradients.rainbow.addColorStop(0,"red");
+			gradients.rainbow.addColorStop(.1,"orange");
+			gradients.rainbow.addColorStop(.2,"yellow");
+			gradients.rainbow.addColorStop(.3,"green");
+			gradients.rainbow.addColorStop(.4,"blue");
+			gradients.rainbow.addColorStop(.5,"purple");
+			gradients.rainbow.addColorStop(.6,"orange");
+			gradients.rainbow.addColorStop(.7,"yellow");
+			gradients.rainbow.addColorStop(.8,"green");
+			gradients.rainbow.addColorStop(.9,"blue");
+			gradients.rainbow.addColorStop(1,"purple");
+			
+			
 			//the colors to use in the palette, css valid, otherwise a function.
 			var colors = [function(){
 							//reds
@@ -400,7 +416,7 @@
 						  },
 						  function(){
 						  	//oranges
-						  	return colorCycle("#f30","#c30","#f60","#f90");
+						  	return colorCycle("#f30","#c30","#f60","#f90","brown");
 						  },
 						  function(){
 						  	return colorCycle("#ff0","#ff3","#ff6","#ff9");
@@ -418,7 +434,7 @@
 						  	return colorCycle("#90f","#60f","#93f","#99f");
 						  },
 						  function(){
-						  	return colorCycle("black","white","brown");
+						  	return colorCycle("black","#333","#999","#ccc","#fff", gradients.rainbow);
 						  },
 						  	];
 			
@@ -577,7 +593,7 @@
 						//we don't we don't want to drag off of the toolbar, so turn off clicking
 						clicking = false;
 					}
-					else if (x > width - (.95* toolSpacing)){
+					else if (x > width - (toolSpacing)){
 						//if this is called while dragging, do nothing.
 						if(dragging){
 							return;
